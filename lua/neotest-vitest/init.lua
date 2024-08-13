@@ -260,6 +260,19 @@ local function parsed_json_to_results(data, output_file, consoleOut)
   for _, testResult in pairs(data.testResults) do
     local testFn = testResult.name
 
+    local is_windows = string.match(vim.uv.os_uname().version, "Windows")
+    if is_windows then
+      -- NOTE: here is the biggest fix
+      -- for windows replace front slashes with a single escaped backslash (means two backslashes)
+      -- the reason is later when setting `tests[keyid] = { ... }` the act of setting a
+      -- string as the key of the table will escape all the backslashes again.
+      -- We ultimately want 2 backslashes at the end of the day and not 4.
+      -- vim.fs.normalize() first makes consistent all forward slashes
+      testFn = vim.fs.normalize(testFn)
+      -- now replace all forward slashes with a single escaped (two) backslashes
+      testFn = testFn:gsub("/", "\\")
+    end
+
     for _, assertionResult in pairs(testResult.assertionResults) do
       local status, name = assertionResult.status, assertionResult.title
 
