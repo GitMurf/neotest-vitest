@@ -1,4 +1,4 @@
-local util = require("neotest-jest.util")
+local util = require("neotest-vitest.util")
 
 local M = {}
 
@@ -6,18 +6,18 @@ function M.is_callable(obj)
   return type(obj) == "function" or (type(obj) == "table" and obj.__call)
 end
 
--- Returns jest binary from `node_modules` if that binary exists and `jest` otherwise.
+-- Returns vitest binary from `node_modules` if that binary exists and `vitest` otherwise.
 ---@param path string
 ---@return string
-function M.getJestCommand(path)
+function M.getVitestCommand(path)
   local gitAncestor = util.find_git_ancestor(path)
 
   local function findBinary(p)
     local rootPath = util.find_node_modules_ancestor(p)
-    local jestBinary = util.path.join(rootPath, "node_modules", ".bin", "jest")
+    local vitestBinary = util.path.join(rootPath, "node_modules", ".bin", "vitest")
 
-    if util.path.exists(jestBinary) then
-      return jestBinary
+    if util.path.exists(vitestBinary) then
+      return vitestBinary
     end
 
     -- If no binary found and the current directory isn't the parent
@@ -33,32 +33,32 @@ function M.getJestCommand(path)
     return foundBinary
   end
 
-  return "jest"
+  return "vitest"
 end
 
-local jestConfigPattern = util.root_pattern("jest.config.{js,ts}")
+local vitestConfigPattern = util.root_pattern("vitest.config.{js,ts}")
 
--- Returns jest config file path if it exists.
+-- Returns vitest config file path if it exists.
 ---@param path string
 ---@return string|nil
-function M.getJestConfig(path)
-  local rootPath = jestConfigPattern(path)
+function M.getVitestConfig(path)
+  local rootPath = vitestConfigPattern(path)
 
   if not rootPath then
     return nil
   end
 
-  local jestJs = util.path.join(rootPath, "jest.config.js")
-  local jestTs = util.path.join(rootPath, "jest.config.ts")
+  local vitestJs = util.path.join(rootPath, "vitest.config.js")
+  local vitestTs = util.path.join(rootPath, "vitest.config.ts")
 
-  if util.path.exists(jestTs) then
-    return jestTs
+  if util.path.exists(vitestTs) then
+    return vitestTs
   end
 
-  return jestJs
+  return vitestJs
 end
 
--- Returns neotest test id from jest test result.
+-- Returns neotest test id from vitest test result.
 -- @param testFile string
 -- @param assertionResult table
 -- @return string
