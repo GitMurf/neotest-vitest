@@ -1,6 +1,6 @@
 local lib = require("neotest.lib")
-local util = require("neotest-jest.util")
-local jest_util = require("neotest-jest.jest-util")
+local util = require("neotest-vitest.util")
+local vitest_util = require("neotest-vitest.vitest-util")
 
 local M = {}
 
@@ -22,13 +22,13 @@ function M.get_parameterized_tests_positions(positions)
   return parameterized_tests_positions
 end
 
--- Synchronously runs `jest` in `file_path` directory skipping all tests and returns `jest` output.
+-- Synchronously runs `vitest` in `file_path` directory skipping all tests and returns `vitest` output.
 -- Output have all of the test names inside it. It skips all tests by adding
--- extra `--testPathPattern` parameter to jest command with placeholder string that should never exist.
+-- extra `--testPathPattern` parameter to vitest command with placeholder string that should never exist.
 -- @param file_path string - path to file to search for tests
--- @return table - parsed jest test results
-local function run_jest_test_discovery(file_path)
-  local binary = jest_util.getJestCommand(file_path)
+-- @return table - parsed vitest test results
+local function run_vitest_test_discovery(file_path)
+  local binary = vitest_util.getVitestCommand(file_path)
   local command = vim.split(binary, "%s+")
 
   vim.list_extend(command, {
@@ -47,29 +47,29 @@ local function run_jest_test_discovery(file_path)
     return nil
   end
 
-  local jest_json_string = result[2].stdout
+  local vitest_json_string = result[2].stdout
 
-  if not jest_json_string or #jest_json_string == 0 then
+  if not vitest_json_string or #vitest_json_string == 0 then
     return nil
   end
 
-  return vim.json.decode(jest_json_string, { luanil = { object = true } })
+  return vim.json.decode(vitest_json_string, { luanil = { object = true } })
 end
 
--- Searches through whole `jest` command output and returns array of all tests at given `position`.
--- @param jest_output table
+-- Searches through whole `vitest` command output and returns array of all tests at given `position`.
+-- @param vitest_output table
 -- @param position number[]
 -- @return { keyid: string, name: string }[]
-local function get_tests_ids_at_position(jest_output, position)
+local function get_tests_ids_at_position(vitest_output, position)
   local test_ids_at_position = {}
-  for _, testResult in pairs(jest_output.testResults) do
+  for _, testResult in pairs(vitest_output.testResults) do
     local testFile = testResult.name
 
     for _, assertionResult in pairs(testResult.assertionResults) do
       local location, name = assertionResult.location, assertionResult.title
 
       if position[1] <= location.line - 1 and position[3] >= location.line - 1 then
-        local keyid = jest_util.get_test_full_id_from_test_result(testFile, assertionResult)
+        local keyid = vitest_util.get_test_full_id_from_test_result(testFile, assertionResult)
 
         test_ids_at_position[#test_ids_at_position + 1] = { keyid = keyid, name = name }
       end
@@ -79,7 +79,7 @@ local function get_tests_ids_at_position(jest_output, position)
   return test_ids_at_position
 end
 
--- First runs `jest` in `file_path` to get all of the tests in the file. Then it takes all of
+-- First runs `vitest` in `file_path` to get all of the tests in the file. Then it takes all of
 -- the parameterized tests and finds tests that were in the same position as parameterized test
 -- and adds new tests (with range=nil) to the parameterized test.
 -- @param file_path string
@@ -88,9 +88,9 @@ function M.enrich_positions_with_parameterized_tests(
   file_path,
   parsed_parameterized_tests_positions
 )
-  local jest_test_discovery_output = run_jest_test_discovery(file_path)
+  local vitest_test_discovery_output = run_vitest_test_discovery(file_path)
 
-  if jest_test_discovery_output == nil then
+  if vitest_test_discovery_output == nil then
     return
   end
 
@@ -98,7 +98,7 @@ function M.enrich_positions_with_parameterized_tests(
     local data = value:data()
 
     local parameterized_test_results_for_position =
-      get_tests_ids_at_position(jest_test_discovery_output, data.range)
+      get_tests_ids_at_position(vitest_test_discovery_output, data.range)
 
     for _, test_result in ipairs(parameterized_test_results_for_position) do
       local new_data = {
@@ -114,7 +114,7 @@ function M.enrich_positions_with_parameterized_tests(
   end
 end
 
-local JEST_PARAMETER_TYPES = {
+local VITEST_PARAMETER_TYPES = {
   "%%p",
   "%%s",
   "%%d",
@@ -126,8 +126,8 @@ local JEST_PARAMETER_TYPES = {
   "%%%%",
 }
 
--- Replaces all of the jest parameters (named and unnamed) with `.*` regex pattern.
--- It allows to run all of the parameterized tests in a single run. Idea inpired by Webstorm jest plugin.
+-- Replaces all of the vitest parameters (named and unnamed) with `.*` regex pattern.
+-- It allows to run all of the parameterized tests in a single run. Idea inpired by Webstorm vitest plugin.
 -- @param test_name string - test name with escaped characters
 -- @returns string
 function M.replaceTestParametersWithRegex(test_name)
@@ -135,7 +135,7 @@ function M.replaceTestParametersWithRegex(test_name)
   -- or field access words (like $parameterName.fieldName)
   local result = test_name:gsub("\\$[%a%.]+", ".*")
 
-  for _, parameter in ipairs(JEST_PARAMETER_TYPES) do
+  for _, parameter in ipairs(VITEST_PARAMETER_TYPES) do
     result = result:gsub(parameter, ".*")
   end
 
