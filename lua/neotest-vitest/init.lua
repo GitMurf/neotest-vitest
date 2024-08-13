@@ -3,6 +3,7 @@ local async = require("neotest.async")
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 local util = require("neotest-vitest.util")
+-- local parameterized_tests = require("neotest-vitest.parameterized-tests")
 
 ---@class neotest.VitestOptions
 ---@field vitestCommand? string|fun(): string
@@ -141,13 +142,63 @@ function adapter.discover_positions(path)
       function: (call_expression
         function: (member_expression
           object: (identifier) @func_name (#any-of? @func_name "it" "test")
+          property: (property_identifier) @each_property (#eq? @each_property "each")
         )
       )
       arguments: (arguments (string (string_fragment) @test.name) (arrow_function))
     )) @test.definition
   ]]
 
-  return lib.treesitter.parse_positions(path, query, { nested_tests = true })
+  -- FLAG: this is from neotest-jest and not sure if I need it right now
+  -- -- Enrich `it.each` tests with metadata about TS node position
+  -- function adapter.build_position(file_path, source, captured_nodes)
+  --   local match_type = get_match_type(captured_nodes)
+  --   if not match_type then
+  --     return
+  --   end
+  --
+  --   ---@type string
+  --   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
+  --   local definition = captured_nodes[match_type .. ".definition"]
+  --
+  --   return {
+  --     type = match_type,
+  --     path = file_path,
+  --     name = name,
+  --     range = { definition:range() },
+  --     is_parameterized = captured_nodes["each_property"] and true or false,
+  --   }
+  -- end
+
+  local positions = lib.treesitter.parse_positions(path, query, {
+    nested_tests = true,
+  })
+  -- vim.notify(
+  --   "neotest-vitest > adapter.discover_positions > positions_true: " .. vim.inspect(positions)
+  -- )
+
+  -- local positions_false = lib.treesitter.parse_positions(path, query, {
+  --   -- WARN: neotest-jest had nested_tests set to false; vitest had it to true
+  --   nested_tests = false,
+  --   -- build_position = 'require("neotest-vitest").build_position',
+  -- })
+  -- vim.notify(
+  --   "neotest-vitest > adapter.discover_positions > positions_false: "
+  --     .. vim.inspect(positions_false)
+  -- )
+
+  -- local parameterized_tests_positions =
+  --   parameterized_tests.get_parameterized_tests_positions(positions)
+  --
+  -- if adapter.vitest_test_discovery and #parameterized_tests_positions > 0 then
+  --   parameterized_tests.enrich_positions_with_parameterized_tests(
+  --     positions:data().path,
+  --     parameterized_tests_positions
+  --   )
+  -- end
+
+  return positions
+  -- return lib.treesitter.parse_positions(path, query, { nested_tests = true })
 end
 
 ---@param path string
@@ -193,6 +244,13 @@ local function getVitestConfig(path)
     if util.path.exists(configPath) then
       -- TEST: monitoring if this is consistent for a couple days
       vim.notify("neotest-vitest > found vitest config: " .. configPath)
+      -- -- more testing
+      -- local path_to_test = util.path.join(rootPath, "__tests__", "main", "libs", "fs")
+      -- local test_vitest_list_command = parameterized_tests.run_vitest_test_discovery(path_to_test)
+      -- vim.notify(
+      --   "neotest-vitest > test_vitest_list_command > JSON: "
+      --     .. vim.inspect(test_vitest_list_command)
+      -- )
       return configPath
     end
   end
@@ -255,6 +313,7 @@ local function cleanAnsi(s)
 end
 
 local function parsed_json_to_results(data, output_file, consoleOut)
+  -- vim.notify("neotest-vitest > parsed_json_to_results > data: " .. vim.inspect(data))
   local tests = {}
 
   for _, testResult in pairs(data.testResults) do
@@ -322,6 +381,8 @@ local function parsed_json_to_results(data, output_file, consoleOut)
     end
   end
 
+  -- vim.notify("neotest-vitest > parsed_json_to_results > results: " .. vim.inspect(tests))
+
   return tests
 end
 
@@ -348,6 +409,8 @@ function adapter.build_spec(args)
 
   local binary = args.vitestCommand or getVitestCommand(pos.path)
   local config = getVitestConfig(pos.path) or "vitest.config.js"
+  -- vim.notify("adapter.build_spec > binary to use: " .. binary)
+  -- vim.notify("adapter.build_spec > config to use: " .. config)
   local command = vim.split(binary, "%s+")
 
   if util.path.exists(config) then
@@ -363,6 +426,8 @@ function adapter.build_spec(args)
     "--testNamePattern=" .. testNamePattern,
     vim.fs.normalize(pos.path),
   })
+
+  -- vim.notify("adapter.build_spec > command: " .. vim.inspect(command))
 
   local cwd = getCwd(pos.path)
 
@@ -415,14 +480,17 @@ function adapter.results(spec, b, tree)
     return {}
   end
 
+  -- vim.notify("neotest-vitest > adapter.results > data: " .. data)
+
   local ok, parsed = pcall(vim.json.decode, data, { luanil = { object = true } })
 
   if not ok then
     logger.error("Failed to parse test output json ", output_file)
     return {}
   end
-
   local results = parsed_json_to_results(parsed, output_file, b.output)
+
+  -- vim.notify("neotest-vitest > adapter.results > REAL results: " .. vim.inspect(results))
 
   return results
 end

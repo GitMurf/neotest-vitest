@@ -1,4 +1,5 @@
 local util = require("neotest-vitest.util")
+local is_windows = string.match(vim.uv.os_uname().version, "Windows")
 
 local M = {}
 
@@ -10,11 +11,29 @@ end
 ---@param path string
 ---@return string
 function M.getVitestCommand(path)
-  local gitAncestor = util.find_git_ancestor(path)
+  -- local gitAncestor = util.find_git_ancestor(path)
+  local vitestConfigPattern = util.root_pattern("{vite,vitest}*.config.{js,ts,mjs,mts}")
+  local config_root_path = vitestConfigPattern(path)
+  if config_root_path == nil then
+    vim.notify("Could not find root path looking for vitest config...")
+  end
+  local gitAncestor = config_root_path or ""
+  -- vim.notify("Found root path: " .. gitAncestor)
 
   local function findBinary(p)
     local rootPath = util.find_node_modules_ancestor(p)
-    local vitestBinary = util.path.join(rootPath, "node_modules", ".bin", "vitest")
+
+    local vitestBinary = ""
+    -- FIXME: this is for windows and for my local testing for now
+    if is_windows then
+      -- NOTE: here is the final working solution!
+      -- Need backslashes and .CMD extension for windows
+      vitestBinary = util.path.join(rootPath, "node_modules", ".bin", "vitest.CMD")
+      -- replace forward slashes with backslashes
+      vitestBinary = string.gsub(vitestBinary, "/", "\\")
+    else
+      vitestBinary = util.path.join(rootPath, "node_modules", ".bin", "vitest")
+    end
 
     if util.path.exists(vitestBinary) then
       return vitestBinary
@@ -50,6 +69,7 @@ function M.getVitestConfig(path)
 
   local vitestJs = util.path.join(rootPath, "vitest.config.js")
   local vitestTs = util.path.join(rootPath, "vitest.config.ts")
+  -- vim.notify("vitestTs config: " .. vitestTs)
 
   if util.path.exists(vitestTs) then
     return vitestTs

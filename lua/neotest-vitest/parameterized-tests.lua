@@ -1,5 +1,4 @@
 local lib = require("neotest.lib")
-local util = require("neotest-vitest.util")
 local vitest_util = require("neotest-vitest.vitest-util")
 
 local M = {}
@@ -27,21 +26,37 @@ end
 -- extra `--testPathPattern` parameter to vitest command with placeholder string that should never exist.
 -- @param file_path string - path to file to search for tests
 -- @return table - parsed vitest test results
-local function run_vitest_test_discovery(file_path)
+-- local function run_vitest_test_discovery(file_path)
+function M.run_vitest_test_discovery(file_path)
   local binary = vitest_util.getVitestCommand(file_path)
   local command = vim.split(binary, "%s+")
 
   vim.list_extend(command, {
-    "--no-coverage",
-    "--testLocationInResults",
-    "--verbose",
+    "list",
+    -- "--no-coverage",
+    -- TODO: see if comparable vitest options to these jest ones
+    -- Does not look like there is a way to get the location in `vitest list`
+    -- "--testLocationInResults",
+    -- "--verbose",
     "--json",
+    "--dir",
     file_path,
-    "-t",
-    "@______________PLACEHOLDER______________@",
+    -- "-t",
+    -- "@______________PLACEHOLDER______________@",
   })
 
+  -- vim.notify("run_vitest_test_discovery > updated command: " .. vim.inspect(command))
+
+  -- local test_command = {
+  --   "C:\\01_Local_Only\\nolocron-dev\\gitmurf-private\\nolocron-beta-private\\node_modules\\.bin\\vitest.CMD",
+  --   "list",
+  -- }
+  -- -- local vim_fn_sys_result = vim.fn.system(test_command)
+  -- -- vim.notify("run_vitest_test_discovery > vim_fn_sys_result: " .. vim.inspect(vim_fn_sys_result))
+
   local result = { lib.process.run(command, { stdout = true }) }
+  -- local result = { lib.process.run(test_command, { stdout = true }) }
+  -- vim.notify("run_vitest_test_discovery > result: " .. vim.inspect(result))
 
   if not result[2] then
     return nil
@@ -52,6 +67,8 @@ local function run_vitest_test_discovery(file_path)
   if not vitest_json_string or #vitest_json_string == 0 then
     return nil
   end
+
+  -- vim.notify("run_vitest_test_discovery: " .. vim.inspect(vitest_json_string))
 
   return vim.json.decode(vitest_json_string, { luanil = { object = true } })
 end
