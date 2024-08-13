@@ -243,7 +243,8 @@ local function getVitestConfig(path)
 
     if util.path.exists(configPath) then
       -- TEST: monitoring if this is consistent for a couple days
-      vim.notify("neotest-vitest > found vitest config: " .. configPath)
+      -- Tested enough that I think we are good... instead I will log if a config is NOT found
+      -- vim.notify("neotest-vitest > found vitest config: " .. configPath)
       -- -- more testing
       -- local path_to_test = util.path.join(rootPath, "__tests__", "main", "libs", "fs")
       -- local test_vitest_list_command = parameterized_tests.run_vitest_test_discovery(path_to_test)
@@ -252,6 +253,8 @@ local function getVitestConfig(path)
       --     .. vim.inspect(test_vitest_list_command)
       -- )
       return configPath
+    else
+      vim.notify("neotest-vitest > vitest config NOT found for some reason: " .. configPath)
     end
   end
 
