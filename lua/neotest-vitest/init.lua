@@ -163,7 +163,7 @@ local function getVitestCommand(path)
   return "vitest"
 end
 
-local vitestConfigPattern = util.root_pattern("{vite,vitest}.config.{js,ts,mjs,mts}")
+local vitestConfigPattern = util.root_pattern("{vite,vitest}*.config.{js,ts,mjs,mts}")
 
 ---@param path string
 ---@return string|nil
