@@ -48,6 +48,10 @@ M.path = (function()
   end
 
   local function dirname(path)
+    if is_windows then
+      -- normalizing Win paths to front slashes to work with dir traversal
+      path = vim.fs.normalize(path)
+    end
     local strip_dir_pat = "/([^/]+)$"
     local strip_sep_pat = "/$"
     if not path or #path == 0 then
